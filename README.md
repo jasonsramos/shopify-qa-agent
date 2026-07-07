@@ -28,7 +28,7 @@ Download and install from: **https://claude.ai/claude-code**
 
 Sign in with your Kilowott email when prompted.
 
-### 3. GitHub CLI
+### 3. GitHub CLI (Optional)
 Download and install from: **https://cli.github.com**
 
 After installing, open PowerShell and run:
