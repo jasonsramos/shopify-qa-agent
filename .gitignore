@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+qa-reports/
+screenshots/
+configs/*.yml
+!configs/example-store.yml
+.DS_Store
+*.log
+*.swp
+.vscode/
+.idea/
+
+# Claude local overrides & secrets (never commit — may hold tokens/keys)
+.claude/settings.local.json
+.claude/mcp.json
+
+# Playwright MCP runtime/cache
+.playwright-mcp/
+
+# Loose test artifacts dumped in the repo root (screenshots/PDFs)
+/*.png
+/*.pdf

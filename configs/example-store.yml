@@ -1,0 +1,57 @@
+# Example Shopify Store Configuration for QA Agent
+# Copy this file to configs/my-store.yml and fill in your details
+
+name: "My Shopify Store"
+
+# Your store information
+store_domain: "mystore.myshopify.com"
+store_url: "https://mystore.myshopify.com"
+
+# Admin API Authentication
+# Option 1 (Recommended): Use a Custom App access token
+admin_access_token: "shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Option 2: Use API key + password
+# admin_api_key: "your-api-key-here"
+# admin_api_password: "your-api-password-here"
+
+# Store details
+store_type: "standard"  # standard | plus | b2b | shopify-pay-only
+store_plan: "advanced"  # basic | professional | advanced | plus | enterprise
+
+# Theme info (optional, helps with code analysis)
+theme_name: "Dawn"
+theme_id: "123456789"
+
+# Testing configuration
+test_checkout: true           # Test the full checkout flow
+test_on_mobile: true          # Test with mobile viewport (375px)
+max_links_to_crawl: 50        # Maximum pages to crawl
+timeout_ms: 30000             # Request timeout in milliseconds
+
+# Critical apps (will be highlighted in report)
+critical_apps:
+  - "Recharge"                # Subscription management
+  - "Klaviyo"                 # Email marketing
+  - "Gorgias"                 # Customer support
+  - "ShipStation"             # Order fulfillment
+
+# Apps to skip checking (if any)
+skip_apps_check:
+  - "Discount Ninja"
+
+# Known issues (will be excluded from report)
+known_issues:
+  - "Homepage hero image loads slowly due to CDN caching"
+  - "Product filter takes 2s to load (investigating)"
+
+# Key pages to test
+key_pages:
+  - "/"
+  - "/products"
+  - "/products/example-product"
+  - "/cart"
+  - "/checkout"
+  - "/about"
+  - "/contact"
+  - "/policies/refund-policy"
