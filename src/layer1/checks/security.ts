@@ -191,25 +191,65 @@ export async function runSecurityCheck(
     { path: '/.DS_Store', risk: 'macOS directory metadata exposed (file listing)' },
   ]
 
+  // Shopify (and other catch-all/SPA hosts) return HTTP 200 for ANY unknown
+  // path, serving the storefront HTML (a "soft-200"). A plain status check
+  // therefore produces false-positive "exposed file" criticals. To avoid this
+  // we GET the body and only flag a file as truly exposed when the response
+  // does not look like the storefront page. None of these sensitive files are
+  // HTML, so an HTML content-type — or a body matching the homepage — means the
+  // file does not actually exist and the host is soft-200ing.
+  const isHtml = (contentType: string | null, body: string) => {
+    if (contentType && /text\/html/i.test(contentType)) return true
+    // content-type may be missing/generic; sniff the body
+    return /<!doctype html|<html[\s>]|<head[\s>]|<body[\s>]/i.test(body.slice(0, 2000))
+  }
+
+  // Fingerprint the storefront homepage so we can recognise a soft-200 even if
+  // it is served with a non-HTML content-type.
+  let homepageBody = ''
+  try {
+    const home = await secureFetch(base, { timeout: 10000 }).catch(() => null)
+    if (home && home.status === 200) homepageBody = (await home.text().catch(() => '')) || ''
+  } catch {
+    // ignore — fingerprint is best-effort
+  }
+  const homepageFingerprint = homepageBody.slice(0, 4000)
+
   await Promise.all(
     sensitiveFiles.map(async (file) => {
       try {
         const response = await secureFetch(`${base}${file.path}`, {
-          method: 'HEAD',
+          method: 'GET',
           redirect: 'manual',
           timeout: 5000,
         }).catch(() => null)
 
-        if (response && response.status === 200) {
-          exposedFiles.push({ path: file.path, status: 200, risk: file.risk })
-          findings.push({
-            id: `exposed-file-${file.path.replace(/[^a-z0-9]/g, '-')}`,
-            severity: 'critical',
-            title: `Sensitive file exposed: ${file.path}`,
-            description: `${base}${file.path} is accessible. ${file.risk}. Remove this file immediately.`,
-            recommendation: `Delete ${file.path} from your web root. Ensure sensitive files are never deployed publicly.`,
-          })
+        if (!response || response.status !== 200) return // not accessible (good)
+
+        const contentType = response.headers.get('content-type')
+        const body = (await response.text().catch(() => '')) || ''
+
+        // Soft-200 detection: storefront HTML served for a path that doesn't
+        // actually resolve to a file.
+        const looksLikeStorefront =
+          isHtml(contentType, body) ||
+          (homepageFingerprint.length > 0 && body.slice(0, 4000) === homepageFingerprint)
+
+        if (looksLikeStorefront) {
+          logger.debug(`Soft-200 (not a real file) for ${file.path} — skipping`)
+          return
         }
+
+        exposedFiles.push({ path: file.path, status: 200, risk: file.risk })
+        findings.push({
+          id: `exposed-file-${file.path.replace(/[^a-z0-9]/g, '-')}`,
+          severity: 'critical',
+          title: `Sensitive file exposed: ${file.path}`,
+          description: `${base}${file.path} is accessible and returned non-HTML file content (content-type: ${
+            contentType || 'unknown'
+          }). ${file.risk}. Remove this file immediately.`,
+          recommendation: `Delete ${file.path} from your web root. Ensure sensitive files are never deployed publicly.`,
+        })
       } catch {
         // File not accessible (good)
       }
